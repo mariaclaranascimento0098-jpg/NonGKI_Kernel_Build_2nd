@@ -3,18 +3,60 @@ name: 'Upload files.'
 runs:
   using: 'composite'
   steps:
-      - name: Upload Build Artifacts For Anykernel3
-        if: env.PACK_METHOD == 'Anykernel3'
-        uses: actions/upload-artifact@v7
-        with:
-          name: Kernel-${{ env.PACK_NAME }}
-          path: |
-            device_kernel/${{ env.PACK_NAME }}
+    - name: Upload Build Artifacts For Anykernel3
+      if: env.PACK_METHOD == 'Anykernel3'
+      uses: actions/upload-artifact@v7
+      with:
+        name: Kernel-${{ env.PACK_NAME }}
+        path: device_kernel/${{ env.PACK_NAME }}
 
-      - name: Upload Build Artifacts For Boot Image
-        if: env.PACK_METHOD == 'MKBOOTIMG'
-        uses: actions/upload-artifact@v7
-        with:
-          name: Kernel-${{ env.PACK_NAME }}
-          path: |
-            ${{ env.PACK_NAME }}
+    - name: Send AnyKernel3 to Telegram
+      if: env.PACK_METHOD == 'Anykernel3'
+      shell: bash
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ env.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ env.TELEGRAM_CHAT_ID }}
+      run: |
+        set -e
+
+        FILE="device_kernel/${PACK_NAME}"
+
+        if [ ! -f "$FILE" ]; then
+          echo "Erro: arquivo não encontrado: $FILE"
+          exit 1
+        fi
+
+        curl --fail-with-body -sS -X POST \
+          "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+          -F "chat_id=${TELEGRAM_CHAT_ID}" \
+          -F "document=@${FILE}" \
+          -F "caption=Kernel ${PACK_NAME} - AnyKernel3"
+
+    - name: Upload Build Artifacts For Boot Image
+      if: env.PACK_METHOD == 'MKBOOTIMG'
+      uses: actions/upload-artifact@v7
+      with:
+        name: Kernel-${{ env.PACK_NAME }}
+        path: ${{ env.PACK_NAME }}
+
+    - name: Send Boot Image to Telegram
+      if: env.PACK_METHOD == 'MKBOOTIMG'
+      shell: bash
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ env.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ env.TELEGRAM_CHAT_ID }}
+      run: |
+        set -e
+
+        FILE="${PACK_NAME}"
+
+        if [ ! -f "$FILE" ]; then
+          echo "Erro: arquivo não encontrado: $FILE"
+          exit 1
+        fi
+
+        curl --fail-with-body -sS -X POST \
+          "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+          -F "chat_id=${TELEGRAM_CHAT_ID}" \
+          -F "document=@${FILE}" \
+          -F "caption=Kernel ${PACK_NAME} - Boot Image"
